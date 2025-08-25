@@ -1,99 +1,72 @@
-Prequesits:
-🔹 1. Jenkins Setup (on AWS EC2)
+# 🚀 Jenkins CI/CD Pipeline for Flask Web App
 
-  1.1 Launch an EC2 instance (Ubuntu/Debian recommended).
-  1.2 Install Jenkins:
+A simple CI/CD pipeline using **Jenkins**, **Docker**, and **AWS EC2** to automate the build and deployment of a Python Flask application.
 
-Jenkins Setup (on AWS EC2)
-```
- sudo apt update
-sudo apt install -y openjdk-11-jdk
-wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
-sudo sh -c 'echo deb https://pkg.jenkins.io/debian binary/ > /etc/apt/sources.list.d/jenkins.list'
-sudo apt update
-sudo apt install -y jenkins
-sudo systemctl start jenkins
-```
-  1.3.Open port 8080 in EC2 Security Group.
+---
 
-  1.4.Access Jenkins at http://<EC2-Public-IP>:8080.
+## 🔧 Tech Stack
 
-  1.5.Install recommended plugins and setup admin user.
+- **CI/CD**: Jenkins
+- **App**: Python (Flask)
+- **Containerization**: Docker
+- **Cloud**: AWS EC2
+- **Registry**: Docker Hub
+
+---
+
+## 📁 Project Structure
 
 
-🔹 2. Create Jenkins Pipeline Job
-   
-   2.1 In Jenkins UI: New Item → Pipeline → OK
-   2.2 Scroll to "Pipeline Script" and paste this:
-
-```
-  pipeline {
-    agent any
-
-    environment {
-        DOCKER_IMAGE = "your-dockerhub-username/jenkins-flask-app"
-        EC2_HOST = "ec2-user@<app-ec2-ip>"
-    }
-
-    stages {
-        stage('Clone Repo') {
-            steps {
-                git 'https://github.com/your-username/your-repo.git'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t $DOCKER_IMAGE ./app'
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push $DOCKER_IMAGE'
-                }
-            }
-        }
-
-        stage('Deploy to EC2') {
-            steps {
-                sh 'scp ./scripts/deploy.sh $EC2_HOST:/home/ec2-user/deploy.sh'
-                sh 'ssh $EC2_HOST "bash deploy.sh $DOCKER_IMAGE"'
-            }
-        }
-    }
-}
+```.
+├── app/ # Flask app source code
+│ ├── app.py
+│ ├── Dockerfile
+│ └── requirements.txt
+├── scripts/ # Deployment script
+│ └── deploy.sh
+├── Jenkinsfile # Jenkins pipeline definition
+└── README.md
 ```
 
 
-🔐 Jenkins Secrets Needed
 
-   - In Jenkins, go to Manage Jenkins → Credentials:
+---
 
-   -  Add a Docker Hub username/password with ID: dockerhub-creds
+## ⚙️ How It Works
 
-   - (Optional) Add EC2 SSH private key if needed for access
+1. Jenkins pulls code from GitHub.
+2. Builds Docker image from `app/`
+3. Pushes image to Docker Hub.
+4. SSH into EC2 → pulls + runs the container.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Jenkins Setup
+- Install Jenkins on EC2 (with Docker)
+- Add Docker Hub credentials (`dockerhub-creds`)
+- Allow SSH to app server EC2
+
+### 2. Deployment Script
+
+**`scripts/deploy.sh`**:
+
+```bash
+#!/bin/bash
+IMAGE=$1
+docker stop flask-app || true
+docker rm flask-app || true
+docker pull $IMAGE
+docker run -d --name flask-app -p 80:5000 $IMAGE
+```
 
 
 
-✅ Features
+Once deployed, open your EC2 public IP in a browser:
 
-   - Dockerized web app with version-controlled code
-
-   - Jenkins pipeline with build, test (optional), and deploy stages
-
-   - Auto deployment to EC2
-
-   - Uses Docker Hub as image registry
+```
+http://<your-ec2-ip>
+```
 
 
-
-🧹 Cleanup
-
-To remove resources:
-
-Terminate EC2 instances
-
-Delete Docker images from Docker Hub (if needed)
